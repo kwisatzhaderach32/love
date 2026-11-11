@@ -1,0 +1,411 @@
+EXPERIMENT 1 — Git Essentials: Commit, Push, Merge and Pull Requests
+
+Aim: Use Git for version control and GitHub to store code, collaborate through branches, merge changes and create a Pull Request.
+
+SOLUTION:
+
+1. Install and configure Git
+git --version
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+
+2. Create a project folder
+mkdir git-lab
+cd git-lab
+
+3. Initialize the repository
+git init
+
+4. Create a file and inspect status
+echo "Git lab experiment" > README.md
+git status
+
+5. Stage and commit
+git add README.md
+git commit -m "Initial commit"
+git status
+
+6. Create a GitHub repository
+On GitHub, create a new empty repository. Copy its HTTPS URL.
+
+7. Connect and push
+git remote add origin https://github.com/USERNAME/REPOSITORY.git
+git branch -M main
+git push -u origin main
+
+8. Create a feature branch
+git switch -c feature-update
+
+9. Make and commit a change
+git add README.md
+git commit -m "Update README"
+
+10. Push the feature branch
+git push -u origin feature-update
+
+11. Create a Pull Request
+On GitHub, open the repository, compare/pull the feature branch into main, review the changes and create the PR.
+
+12. Merge and update local main
+git switch main
+git pull origin main
+
+
+==================================================
+
+
+EXPERIMENT 2 — Flask App Containerization and Docker Hub Deployment
+
+Aim: Create a simple Flask web application, package it into a Docker image, run it as a container and publish the image to Docker Hub.
+
+SOLUTION:
+
+1. Create a project folder
+mkdir flask-docker-lab
+cd flask-docker-lab
+
+2. Create app.py
+from flask import Flask
+app = Flask(__name__)
+@app.route("/")
+def home():
+    return "<h1>Welcome to Flask + Docker!</h1>"
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+
+3. Create requirements.txt
+Flask
+
+4. Create Dockerfile
+FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+EXPOSE 5000
+CMD ["python", "app.py"]
+
+5. Build the image
+docker build -t ex2 .
+
+6. Run the container
+docker run -d --name flask-lab -p 5050:5000 ex2
+(Open http://localhost:5050 in a browser.)
+
+7. Check the container
+docker ps
+docker logs flask-lab
+
+8. Log in to Docker Hub
+docker login
+
+9. Tag and push the image
+docker tag ex2 USERNAME/ex2:latest
+docker push USERNAME/ex2:latest
+
+10. Pull the image
+docker pull USERNAME/ex2:latest
+
+
+==================================================
+
+
+EXPERIMENT 3 — CI Pipeline: Python, GitHub Actions and Docker Hub
+
+Aim: Automate dependency installation, Python testing and Docker image publishing using a GitHub Actions workflow.
+
+SOLUTION:
+
+1. Create the project files
+
+app.py
+def add(a, b):
+    return a + b
+
+test_app.py
+from app import add
+def test_add():
+    assert add(2, 3) == 5
+    assert add(-1, 1) == 0
+
+requirements.txt
+pytest
+
+2. Test locally
+pip install -r requirements.txt
+python -m pytest -q
+
+3. Create a Dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["python", "-c", "from app import add; print(add(2, 3))"]
+
+4. Create a GitHub repository
+git init
+git add .
+git commit -m "Add Python app and tests"
+git branch -M main
+git remote add origin https://github.com/USERNAME/REPOSITORY.git
+git push -u origin main
+
+5. Add Docker Hub secrets
+In GitHub repository Settings → Secrets and variables → Actions, add DOCKERHUB_USERNAME and DOCKERHUB_TOKEN.
+
+6. Create the workflow file (.github/workflows/ci.yml)
+name: CI DockerHub Workflow
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+      - name: Run Tests
+        run: python -m pytest -q
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and Push Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: USERNAME/python-ci-lab:latest
+
+7. Push the workflow
+git add .
+git commit -m "Add CI workflow"
+git push
+
+8. Verify the result
+Open the repository's Actions tab and check that tests pass and the image is pushed to Docker Hub.
+
+
+==================================================
+
+
+EXPERIMENT 4 — Jenkins Deployment Using Docker
+
+Aim: Run Jenkins in Docker, create a Pipeline job, generate a small website and publish the generated HTML as a build result.
+
+SOLUTION:
+
+1. Create a working folder
+mkdir jenkins-lab
+cd jenkins-lab
+
+2. Create docker-compose.yml
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    restart: unless-stopped
+volumes:
+  jenkins_home:
+
+3. Start Jenkins
+docker compose up -d
+docker ps
+
+4. Get the initial administrator password
+docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+
+5. Complete setup
+Open http://localhost:8080, enter the initial password, install the suggested plugins and create an administrator account.
+
+6. Install HTML Publisher
+Manage Jenkins → Plugins → find and install the HTML Publisher plugin if not already installed.
+
+7. Create a Pipeline job
+New Item → enter a job name → choose Pipeline → create the job.
+
+8. Enter the Pipeline script
+pipeline {
+    agent any
+    stages {
+        stage("Generate Site") {
+            steps {
+                sh 'mkdir -p site'
+                writeFile file: "site/index.html", text: """
+                <html><body>
+                <h1>Jenkins CI/CD Lab</h1>
+                <p>Build completed successfully.</p>
+                </body></html>
+                """
+            }
+        }
+        stage("Publish Site") {
+            steps {
+                publishHTML(target: [
+                    reportDir: "site",
+                    reportFiles: "index.html",
+                    reportName: "Generated Website",
+                    keepAll: true,
+                    alwaysLinkToLastBuild: true
+                ])
+                archiveArtifacts artifacts: "site/**", fingerprint: true
+            }
+        }
+    }
+}
+
+9. Run and verify
+Click Build Now, open the Console Output, confirm both stages succeed, and open the published HTML report.
+
+
+==================================================
+
+
+EXPERIMENT 6 — Manage Kubernetes Resources Using CLI
+
+Aim: Use kubectl to create and inspect Pods, manage Deployments, scale replicas, perform rolling updates and expose an application using a Service.
+
+SOLUTION:
+
+1. Open a Kubernetes playground
+Start the lab environment provided by your course (e.g. KillerCoda Kubernetes playground).
+
+2. Create a Pod YAML file (nginx-pod.yaml)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+
+3. Create and inspect the Pod
+kubectl apply -f nginx-pod.yaml
+kubectl get pods
+kubectl describe pod nginx-pod
+
+4. Delete the test Pod
+kubectl delete pod nginx-pod
+
+5. Create a Deployment
+kubectl create deployment my-nginx --image=nginx
+kubectl get deployments
+kubectl get pods
+
+6. Scale the Deployment
+kubectl scale deployment my-nginx --replicas=3
+kubectl get pods
+
+7. Perform a rolling update
+kubectl set image deployment/my-nginx nginx=nginx:1.25
+kubectl rollout status deployment/my-nginx
+
+8. Check rollout history and rollback
+kubectl rollout history deployment/my-nginx
+kubectl rollout undo deployment/my-nginx
+
+9. Expose the Deployment
+kubectl expose deployment my-nginx --type=NodePort --port=80
+kubectl get services
+kubectl get endpoints
+
+10. Verify and clean up
+kubectl delete service my-nginx
+kubectl delete deployment my-nginx
+
+
+==================================================
+
+
+EXPERIMENT 7 — Kubernetes Deployment and Service for a Python App
+
+Aim: Deploy a Python web application image from Docker Hub to Kubernetes using Minikube, create multiple replicas and expose the application through a NodePort Service.
+
+SOLUTION:
+
+1. Start Docker Desktop
+Ensure Docker Desktop is running before starting Minikube with the Docker driver.
+
+2. Start Minikube
+minikube start --driver=docker
+kubectl get nodes
+
+3. Pull the application image
+docker pull bencuk/python-demoapp
+
+4. Load the image into Minikube
+minikube image load bencuk/python-demoapp
+
+5. Create the Deployment YAML (deployment.yaml)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-web-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: python-web
+  template:
+    metadata:
+      labels:
+        app: python-web
+    spec:
+      containers:
+        - name: python-web
+          image: bencuk/python-demoapp:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+
+6. Apply the Deployment
+kubectl apply -f deployment.yaml
+kubectl get deployments
+kubectl get pods
+
+7. Create the Service YAML (service.yaml)
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-web-service
+spec:
+  type: NodePort
+  selector:
+    app: python-web
+  ports:
+    - port: 5000
+      targetPort: 5000
+      nodePort: 30080
+
+8. Apply and inspect the Service
+kubectl apply -f service.yaml
+kubectl get services
+kubectl describe service python-web-service
+
+9. Access the application
+minikube service python-web-service --url
+(Open the URL returned by Minikube in your browser.)
+
+10. Clean up
+kubectl delete -f service.yaml
+kubectl delete -f deployment.yaml
+
+
+Note: Experiment 5 was not included in the original lab materials, so it is not covered here.
